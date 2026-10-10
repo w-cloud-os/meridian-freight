@@ -77,45 +77,50 @@ Delay in minutes for each shipment is generated as:
 
 ## Findings
 ### Weekend vs weekday (raw comparison)
-           shipments    mean delay (min)    standard deviation (min)
-weekday    14,019       44.7                32.8
-weekend    5,570        43.7                31.8
-
+   | group   | shipments | mean delay (min) | std dev (min) |
+   |---------|----------:|-----------------:|--------------:|
+   | weekday | 14,019    | 44.7             | 32.8          |
+   | weekend | 5,570     | 43.7             | 31.8          |
+   
 The raw gap is about -1 minute: weekends look slightly better.
 
 Welch t-test results (scripts/analysis.py):
 
-All crews     : weekend minus weekday = -1.03 min, 95% CI (-2.02, -0.03), t = -2.02, df = 10550, p = 0.043
-   scipy check: t = -2.02, p = 0.043
-Excluding crew 2: weekend minus weekday = 3.84 min, 95% CI (2.78, 4.89), t = 7.12, df = 11787, p = 1.2e-12
-   scipy check: t = 7.12, p = 1.2e-12
+| comparison        | weekend − weekday (min) | 95% CI         | t     | df     | p       |
+|-------------------|------------------------:|----------------|------:|-------:|---------|
+| all crews         | -1.03                   | (-2.02, -0.03) | -2.02 | 10,550 | 0.043   |
+| excluding crew 2  | +3.84                   | (2.78, 4.89)   | 7.12  | 11,787 | 1.2e-12 |
    
 ### Delay by route distance (simple regression)
 Fitting delay = slope * distance + intercept gives:
 
-method                                     slope (min/km)     intercept (min)
-closed form (least squares)                0.05944            0.12
-gradient descent, standardized distance    0.05944            0.12
+| method                                  | slope (min/km) | intercept (min) |
+|-----------------------------------------|---------------:|----------------:|
+| closed form (least squares)             | 0.05944        | 0.12            |
+| gradient descent, standardized distance | 0.05944        | 0.12            |
+
 
 That is 5.94 minutes of extra delay per 100 km, close to the true 0.06. R² = 0.365 and the residual standard deviation is 25.9 minutes: distance explains about a third of the variation in delay.
 
 Gradient descent and feature scaling. Distances run up to 1,200 km, so the loss is extremely steep in the slope direction (curvature around 2 * mean(x^2), over a million) and nearly flat in the intercept direction (curvature around 2).
 
-setup                                         result
-raw distance, lr = 0.05                       diverged (nan)
-raw distance, lr = 1e-7, 5,000 steps          slope 0.05958, but intercept stuck at 0.0001 and MSE 672.7 (optimum is about 671)
-standardized distance, lr = 0.1, 500 steps    matches the closed form exactly
+| setup                                      | result                                                                            |
+|--------------------------------------------|-----------------------------------------------------------------------------------|
+| raw distance, lr = 0.05                    | diverged (nan)                                                                    |
+| raw distance, lr = 1e-7, 5,000 steps       | slope 0.05958, but intercept stuck at 0.0001 and MSE 672.7 (optimum is about 671) |
+| standardized distance, lr = 0.1, 500 steps | matches the closed form exactly                                                   |
 
 Standardizing (z = (x - mean) / std) puts both parameters on a similar scale so one learning rate works for both. To convert back to the original units: slope = w_z / std and intercept = b_z - w_z * mean / std.
 
 ### All factors together (multiple regression)
 Solving the normal equations (X^T X) beta = X^T y with distance, a weekend flag, and a crew 2 flag:
 
-term                  true value     estimate      std error      95% CI
-intercept (min)       -5             -4.42         0.48           (-5.36, -3.47)
-distance (min/km)     0.06           0.0595        0.0005         (0.0585, 0.0606)
-weekend (min)         +3             +3.33         0.43           (2.49, 4.16)
-crew 2 (min)          +15            +15.05        0.45           (14.16, 15.94)
+| term              | true value | estimate | std error | 95% CI             |
+|-------------------|-----------:|---------:|----------:|--------------------|
+| intercept (min)   | -5         | -4.42    | 0.48      | (-5.36, -3.47)     |
+| distance (min/km) | 0.06       | 0.0595   | 0.0005    | (0.0585, 0.0606)   |
+| weekend (min)     | +3         | +3.33    | 0.43      | (2.49, 4.16)       |
+| crew 2 (min)      | +15        | +15.05   | 0.45      | (14.16, 15.94)     |
 
 Residual standard deviation is 25.2 minutes (the generator's noise is 25) and R² = 0.399. Every true value falls inside its 95% interval, so the model recovers what the generator put in. Note that the weekend effect is +3.3 here but -1 in the raw comparison: adjusting for crew removes the confounding.
 
