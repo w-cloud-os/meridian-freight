@@ -12,27 +12,49 @@ PostgreSQL 16, Docker Compose, Python (NumPy, SciPy, psycopg), SQL
 
 ## Project structure
 ```
-initdb/01_schema.sql      tables, constraints, indexes, delay view (runs automatically on first start)
-scripts/generate_data.py  seeded synthetic data generator (20,000 shipments)
-scripts/analysis.py       Welch t-tests (weekend vs weekday)
-sql/                      analysis queries, one question per file
-docker-compose.yml        PostgreSQL service
-.env.example              template for database settings
+initdb/01_schema.sql                   tables, constraints, indexes, delay view (runs on first start)
+scripts/generate_data.py               seeded synthetic data generator (20,000 shipments)
+scripts/analysis.py                    Welch t-tests: weekend vs weekday
+scripts/regression.py                  simple regression: gradient descent vs closed form, feature scaling
+scripts/multiple_regression.py         multiple regression via normal equations (distance, weekend, crew 2)
+sql/01_delay_by_route.sql              delay vs route distance
+sql/02_delay_weekday_vs_weekend.sql    weekday vs weekend
+sql/02_part_two                        solution for confounding error
+sql/03_delay_by_crew.sql               delay by crew
+docker-compose.yml                     PostgreSQL service
+.env.example                           template for database settings
+requirements.txt                       Python dependencies
 ```
 
 ## How to run
+**1. Start the database**
 ```bash
 cp .env.example .env              # then edit the password
-docker compose up -d              # starts PostgreSQL, creates the schema
+docker compose up -d              # starts PostgreSQL and creates the schema
+```
+The database is exposed on host port **5433**, because 5432 may be taken by a local install.
 
+**2. Set up Python**
+```bash
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
-
-python scripts/generate_data.py   # loads synthetic data
-docker compose exec -T db psql -U meridian -d freight < sql/01_delay_by_route.sql
-python scripts/analysis.py
 ```
+
+**3. Load the synthetic data** (safe to re-run; it clears the tables first)
+```bash
+python scripts/generate_data.py
+```
+
+**4. Run the analysis**
+```bash
+for f in sql/*.sql; do docker compose exec -T db psql -U meridian -d freight < "$f"; done
+python scripts/analysis.py
+python scripts/regression.py
+python scripts/multiple_regression.py
+```
+The output should match the numbers in the Findings section below.
+
 To reset the database completely: `docker compose down -v`, then `docker compose up -d` again.
 Note: the database is exposed on host port **5433**, because 5432 may be taken by a local install.
 
