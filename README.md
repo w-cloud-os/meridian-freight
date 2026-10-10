@@ -12,18 +12,19 @@ PostgreSQL 16, Docker Compose, Python (NumPy, SciPy, psycopg), SQL
 
 ## Project structure
 ```
-initdb/01_schema.sql                   tables, constraints, indexes, delay view (runs on first start)
+initdb/01_schema.sql                   tables, constraints, indexes, delay view
 scripts/generate_data.py               seeded synthetic data generator (20,000 shipments)
 scripts/analysis.py                    Welch t-tests: weekend vs weekday
-scripts/regression.py                  simple regression: gradient descent vs closed form, feature scaling
-scripts/multiple_regression.py         multiple regression via normal equations (distance, weekend, crew 2)
+scripts/regression.py                  gradient descent vs closed form, feature scaling
+scripts/multiple_regression.py         via normal equations (distance, weekend, crew 2)
 sql/01_delay_by_route.sql              delay vs route distance
 sql/02_delay_weekday_vs_weekend.sql    weekday vs weekend
-sql/02_part_two                        solution for confounding error
+sql/02b_weekend_excluding_crew2.sql    solution for confounding error
 sql/03_delay_by_crew.sql               delay by crew
 docker-compose.yml                     PostgreSQL service
 .env.example                           template for database settings
 requirements.txt                       Python dependencies
+requirements-lock.txt                  Exact versions used to build this
 ```
 
 ## How to run
