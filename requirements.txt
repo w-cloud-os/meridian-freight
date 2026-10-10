@@ -1,0 +1,4 @@
+numpy
+scipy
+psycopg[binary]
+python-dotenv
